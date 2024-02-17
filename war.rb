@@ -1,4 +1,3 @@
-# encoding: UTF-8
 class Game
     attr_reader :pool_cards
     def initialize()
@@ -13,6 +12,18 @@ class Game
         end
     end
 
+    def match_fixing(cards, players)
+        num_of_players = players.length
+        max_loop_count = cards.card_collection.length - 1
+        for i in 0..max_loop_count
+            if cards.card_collection[0].strength > 5
+                players[0].hand << cards.card_collection.delete_at(0)
+            else
+                players[1].hand << cards.card_collection.delete_at(0)
+            end
+        end
+    end
+
     def war(players)
         @compare_hash = {}
         players.each_with_index do | player, index |
@@ -22,9 +33,9 @@ class Game
         end
         max_value = @compare_hash.values.max
         if @compare_hash.count{| key, value | value == max_value} > 1
-            return '', false
+            return '', true
         else
-            return players[@compare_hash.key(max_value)], true
+            return players[@compare_hash.key(max_value)], false
         end
     end
 
@@ -34,9 +45,24 @@ class Game
     end
 
     def get_cards(winner)
-        winner.added_hand << @pool_cards
+        winner.added_hand += @pool_cards
         @pool_cards = []
     end
+
+    def check_do_rematch(players)
+        players.each do | player |
+            if player.hand.length == 0
+                if player.added_hand.length == 0
+                    return false
+                else
+                    player.hand += player.added_hand.shuffle!
+                    player.added_hand = []
+                end
+            end
+        end
+        return true
+    end
+
 end
 
 class Player
@@ -60,7 +86,6 @@ class Card
 end
 
 class Cards
-
     attr_accessor :card_collection
     MARKS = ['ハート', 'ダイヤ', 'クラブ', 'スペード']
     RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
@@ -83,7 +108,10 @@ class Cards
 end
 
 participants = ['プレイヤー1', 'プレイヤー2']
-break_flag = false
+is_draw = false
+is_rematch = true
+
+performance_ranking = Hash.new(0)
 
 cards = Cards.new
 players = participants.map do | participant |
@@ -94,19 +122,28 @@ puts "戦争を開始します。"
 
 game = Game.new()
 game.distribute_cards(cards, players)
+# game.match_fixing(cards, players)
 
 puts "カードが配られました。"
 
 while true
-    puts "戦争！"
-    winner, break_flag = game.war(players)
-    if break_flag
-        puts "#{winner.name}が勝ちました。#{winner.name}はカードを#{game.pool_cards.length}枚もらいました。"
+    if is_rematch
+        puts "戦争！"
+        winner, is_draw = game.war(players)
+        if is_draw
+            puts "引き分けです。"
+        else
+            puts "#{winner.name}が勝ちました。#{winner.name}はカードを#{game.pool_cards.length}枚もらいました。"
             game.get_cards(winner)
-        break
+        end
     else
-        puts "引き分けです。"
+        break
     end
+    is_rematch = game.check_do_rematch(players)
 end
+
+# players.sort_by { |player| player.hand.length }.reverse.each_with_index { |player, index| puts "#{player.name}が#{index+1}位です。" }
+players.sort_by { |player| player.hand.length }.reverse
+puts "#{players[0].name}が1位、#{players[1].name}が2位です。"
 
 puts "戦争を終了します。"
