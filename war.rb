@@ -53,25 +53,30 @@ class Game
         players.each do | player |
             if player.hand.length == 0
                 if player.added_hand.length == 0
-                    return false
+                    return player, false
                 else
                     player.hand += player.added_hand.shuffle!
                     player.added_hand = []
                 end
             end
         end
-        return true
+        return '', true
     end
 
 end
 
 class Player
     attr_accessor :hand, :added_hand
-    attr_reader :name
+    attr_reader :name, :num_of_total_hands
     def initialize(name)
         @name = name
         @hand = []
         @added_hand = []
+        @num_of_total_hands = 0
+    end
+
+    def calculate_total_hands()
+        @num_of_total_hands = @hand.length + @added_hand.length
     end
 end
 
@@ -107,18 +112,35 @@ class Cards
     end
 end
 
-participants = ['プレイヤー1', 'プレイヤー2']
+participants = []
+
 is_draw = false
 is_rematch = true
 
 performance_ranking = Hash.new(0)
 
+puts "戦争を開始します。"
+
+while true
+    print "プレイヤーの人数を入力してください（2〜5）: "
+    num_of_players = gets.to_i
+    if 2 <= num_of_players && num_of_players <= 5
+        break
+    else
+        puts "人数は2~5で再度入力してください。"
+    end
+end
+
+
+for i in 1..num_of_players
+    print "プレイヤー#{i}の名前を入力してください: "
+    participants << gets.chomp
+end
+
 cards = Cards.new
 players = participants.map do | participant |
     Player.new(participant)
 end
-
-puts "戦争を開始します。"
 
 game = Game.new()
 game.distribute_cards(cards, players)
@@ -139,11 +161,25 @@ while true
     else
         break
     end
-    is_rematch = game.check_do_rematch(players)
+    game_loser, is_rematch = game.check_do_rematch(players)
 end
 
-# players.sort_by { |player| player.hand.length }.reverse.each_with_index { |player, index| puts "#{player.name}が#{index+1}位です。" }
-players.sort_by { |player| player.hand.length }.reverse
-puts "#{players[0].name}が1位、#{players[1].name}が2位です。"
+puts "#{game_loser.name}の手札がなくなりました。"
+
+players.each do |player|
+    player.calculate_total_hands()
+    print "#{player.name}の手札の枚数は#{player.num_of_total_hands}枚です。"
+end
+
+print "\n"
+
+players.sort_by { |player| player.num_of_total_hands }.reverse.each_with_index do |player, index|
+    print "#{player.name}が#{index+1}位"
+    if not index == players.size-1
+        print "、"
+    else
+        print "です。\n"
+    end
+end
 
 puts "戦争を終了します。"
